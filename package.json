@@ -1,0 +1,23 @@
+{
+	"name": "new-xes-py-helper",
+	"module": "index.ts",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"dev": "bun index.ts",
+		"format": "prettier --write .",
+		"fuck-u-code": "fuck-u-code analyze -l zh"
+	},
+	"devDependencies": {
+		"@types/bun": "latest",
+		"@types/ws": "^8.18.1",
+		"prettier": "^3.8.1"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"net": "^1.0.2",
+		"path": "^0.12.7"
+	}
+}
