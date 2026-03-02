@@ -30,10 +30,12 @@ export function createWsServer(
 
 		if (data.type === 'conn' && data.handle === 'close') {
 			ws.send(
-				`7${stringToBase64(JSON.stringify({
-					type: 'compileFail',
-					info: '链接终止',
-				}))}`,
+				`7${stringToBase64(
+					JSON.stringify({
+						type: 'compileFail',
+						info: '链接终止',
+					}),
+				)}`,
 			);
 			ws.close();
 			return;
