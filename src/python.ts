@@ -1,6 +1,70 @@
 import { spawn, type Subprocess } from 'bun';
-import path from 'path';
+import { execSync } from 'child_process';
+import { existsSync, statSync } from 'fs';
+import { platform } from 'os';
+import path, { join } from 'path';
 import type { Writable } from 'stream';
+
+/**
+ * 获取本地所有Python解释器路径
+ * @returns 格式为 { name: string, value: string }[] 的Python解释器列表
+ */
+export function getLocalPythonInterpreters(): {
+	name: string;
+	value: string;
+}[] {
+	const pythonPaths: Set<string> = new Set();
+	const isWindows = platform() === 'win32';
+
+	const pathEnv = process.env.PATH || '';
+	const pathDirs = pathEnv.split(isWindows ? ';' : ':');
+
+	for (const dir of pathDirs) {
+		if (!dir) continue;
+		// 可能的Python可执行文件名
+		const pythonExecutables = isWindows
+			? ['python.exe', 'python3.exe', 'python2.exe']
+			: ['python', 'python3', 'python2'];
+
+		for (const exe of pythonExecutables) {
+			const fullPath = join(dir, exe);
+			if (!existsSync(fullPath) || !statSync(fullPath).isFile()) {
+				continue;
+			}
+			try {
+				execSync(`${fullPath} --version`, { stdio: 'ignore' });
+				pythonPaths.add(fullPath);
+			} catch (e) {
+				continue;
+			}
+		}
+	}
+
+	const resultList: { name: string; value: string }[] = [];
+	pythonPaths.forEach((path) => {
+		try {
+			const versionOutput = execSync(`${path} --version`, {
+				encoding: 'utf8',
+			}).trim();
+			const simplifiedPath = path.replace(
+				process.env.HOME || process.env.USERPROFILE || '',
+				'~',
+			);
+			const name = `${versionOutput} (${simplifiedPath})`;
+			resultList.push({
+				name,
+				value: path,
+			});
+		} catch (e) {
+			resultList.push({
+				name: path,
+				value: path,
+			});
+		}
+	});
+
+	return resultList;
+}
 
 export class PythonProcessManager {
 	private pythonProcess: Subprocess | null = null;
@@ -12,6 +76,10 @@ export class PythonProcessManager {
 	private stdoutCallback: ((chunk: string) => void) | null = null;
 	private stderrCallback: ((chunk: string) => void) | null = null;
 	private exitCallback: ((code: number) => void) | null = null;
+
+	constructor(pythonPath: string) {
+		this.pythonPath = pythonPath;
+	}
 
 	onStdout(cb: (chunk: string) => void) {
 		this.stdoutCallback = cb;
