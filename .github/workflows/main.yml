@@ -1,0 +1,91 @@
+# Copied from https://github.com/ImAurDev/xes-coding-helper, thanks to ImAurDev!
+# Copyright (c) 2026 ImAurDev, under the MPL License.
+name: Cross-Platform Build with Bun
+
+on:
+    push:
+        branches: [main, master]
+        tags: ['v*']
+    workflow_dispatch:
+
+jobs:
+    build:
+        name: Build (${{ matrix.os }})
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - os: ubuntu-latest
+                      artifact_name: helper-linux
+                      output_file: helper
+                    - os: windows-latest
+                      artifact_name: helper-windows
+                      output_file: helper.exe
+                    - os: macos-latest
+                      artifact_name: helper-macos
+                      output_file: helper
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup Bun
+              uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: latest
+
+            - name: Install dependencies
+              run: bun install
+
+            - name: Build executable
+              run: bun run build
+
+            - name: Verify build output
+              shell: bash
+              run: |
+                  if [ ! -f "${{ matrix.output_file }}" ]; then
+                    echo "Error: Expected output file ${{ matrix.output_file }} not found!"
+                    ls -la
+                    exit 1
+                  fi
+                  echo "Build output verified: ${{ matrix.output_file }}"
+
+            - name: Rename artifact
+              shell: bash
+              run: |
+                  mv ${{ matrix.output_file }} ${{ matrix.artifact_name }}
+                  if [ "${{ matrix.os }}" != "windows-latest" ]; then
+                    chmod +x ${{ matrix.artifact_name }}
+                  fi
+
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{ matrix.artifact_name }}
+                  path: ${{ matrix.artifact_name }}
+
+    release:
+        name: Create Release
+        needs: build
+        runs-on: ubuntu-latest
+        if: startsWith(github.ref, 'refs/tags/v')
+        permissions:
+            contents: write
+
+        steps:
+            - name: Download all artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  path: ./artifacts
+
+            - name: Create Release
+              uses: softprops/action-gh-release@v1
+              with:
+                  files: |
+                      ./artifacts/helper-linux/helper-linux
+                      ./artifacts/helper-windows/helper-windows
+                      ./artifacts/helper-macos/helper-macos
+                  generate_release_notes: true
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
