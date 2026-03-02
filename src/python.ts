@@ -60,14 +60,14 @@ export class PythonProcessManager {
 
 		if (this.pythonProcess.stdout) {
 			readStream(
-                // @ts-ignore
+				// @ts-ignore
 				this.pythonProcess.stdout.getReader(),
 				this.stdoutCallback,
 			);
 		}
 		if (this.pythonProcess.stderr) {
 			readStream(
-                // @ts-ignore
+				// @ts-ignore
 				this.pythonProcess.stderr.getReader(),
 				this.stderrCallback,
 			);
