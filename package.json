@@ -5,7 +5,7 @@
 	"private": true,
 	"scripts": {
 		"dev": "bun index.ts",
-		"build": "bun build ./index.ts --compile --bytecode --outfile xes_coding_helper --production --minify-whitespace --minify-syntax --minify-identifiers",
+		"build": "bun build ./index.ts --compile --bytecode --outfile helper --production --minify-whitespace --minify-syntax --minify-identifiers",
 		"format": "prettier --write .",
 		"fuck-u-code": "fuck-u-code analyze -l zh"
 	},
