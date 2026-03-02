@@ -30,10 +30,10 @@ export function createWsServer(
 
 		if (data.type === 'conn' && data.handle === 'close') {
 			ws.send(
-				`7${JSON.stringify({
+				`7${stringToBase64(JSON.stringify({
 					type: 'compileFail',
 					info: '链接终止',
-				})}`,
+				}))}`,
 			);
 			ws.close();
 			return;
@@ -95,10 +95,21 @@ export function createWsServer(
 	const handleType1 = (ws: ServerWebSocket<undefined>, raw: string) => {
 		let text = raw;
 		if (text === '\r') text = '\r\n';
+		if (text === '\x7F') {
+			if (input.length > 0) {
+				input = input.slice(0, -1);
+				ws.send(`1${stringToBase64('\b \b')}`);
+			}
+			return;
+		}
 		input += text;
 		if (text === '\r\n') {
 			pythonProcess.sendInput(input);
 			input = '';
+		}
+		if (text === '\x03') {
+			pythonProcess.killProcess();
+			ws.close();
 		}
 		ws.send(`1${stringToBase64(text as string)}`);
 	};
