@@ -5,6 +5,7 @@ import { stringToBase64 } from './utils';
 import { PythonProcessManager } from './python';
 import { CORS_HEADERS } from './port_helper';
 import type { ServerWebSocket } from 'bun';
+import { platform } from 'os';
 
 interface WsServerHandle {
 	server: ReturnType<typeof Bun.serve>;
@@ -66,12 +67,17 @@ export function createWsServer(
 		}
 
 		if (data.xml) {
+			const isWin = platform() === 'win32';
 			// data.xml 为Python程序的主代码
 			pythonProcess.onStdout((chunk) => {
-				safeSend(ws, `1${stringToBase64(chunk)}`);
+				safeSend(ws, `1${stringToBase64(
+					!isWin ? chunk.replace(/\r\n/g, '\n') : chunk
+				)}`);
 			});
 			pythonProcess.onStderr((chunk) => {
-				safeSend(ws, `1${stringToBase64(chunk)}`);
+				safeSend(ws, `1${stringToBase64(
+					!isWin ? chunk.replace(/\r\n/g, '\n') : chunk
+				)}`);
 			});
 			pythonProcess.onExit(() => {
 				safeSend(
