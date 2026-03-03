@@ -20,7 +20,7 @@ jobs:
                       artifact_name: helper-linux
                       output_file: helper
                     - os: windows-latest
-                      artifact_name: helper-windows
+                      artifact_name: helper-windows.exe
                       output_file: helper.exe
                     - os: macos-latest
                       artifact_name: helper-macos
