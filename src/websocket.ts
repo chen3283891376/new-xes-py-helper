@@ -2,42 +2,13 @@ import { join } from 'path';
 import { mkdir, writeFile } from 'fs/promises';
 import { downloadAll } from './downloader';
 import { stringToBase64 } from './utils';
-import { PythonProcessManager } from './python';
+import { analyzePythonError, PythonProcessManager } from './python';
 import { CORS_HEADERS } from './port_helper';
 import type { ServerWebSocket } from 'bun';
 import { platform } from 'os';
 
 interface WsServerHandle {
 	server: ReturnType<typeof Bun.serve>;
-}
-function analyzePythonError(errorOutput: string): {
-	missingModule?: string;
-	suggestedCommand?: string;
-} {
-	const error = errorOutput.trim();
-
-	// 模式匹配
-	const patterns = [
-		// ModuleNotFoundError: No module named 'xxx'
-		/ModuleNotFoundError.*?: No module named ['"]([^'"]+)['"]/,
-		/ImportError.*?: No module named ['"]([^'"]+)['"]/,
-		// cannot import name 'xxx' from 'yyy'
-		/ImportError.*?: cannot import name ['"]([^'"]+)['"]/,
-		// DLL load failed while importing xxx
-		/DLL load failed while importing ['"]([^'"]+)['"]/,
-	];
-
-	for (const pattern of patterns) {
-		const match = error.match(pattern);
-		if (match && match[1]) {
-			return {
-				missingModule: match[1],
-				suggestedCommand: `pip install ${match[1]}`,
-			};
-		}
-	}
-
-	return {};
 }
 
 export function createWsServer(
@@ -103,17 +74,16 @@ export function createWsServer(
 				safeSend(
 					ws,
 					`1${stringToBase64(
-						!isWin ? chunk.replaceAll(/\r\n/g, '\n') : chunk,
+						!isWin ? chunk.replace(/\n/g, '\r\n') : chunk,
 					)}`,
 				);
 			});
 			pythonProcess.onStderr(async (chunk) => {
-				// console.log(analyzePythonError(chunk).missingModule)
 				const missingModule = analyzePythonError(chunk).missingModule;
 				safeSend(
 					ws,
 					`1${stringToBase64(
-						!isWin ? chunk.replaceAll(/\r\n/g, '\n') : chunk,
+						!isWin ? chunk.replace(/\n/g, '\r\n') : chunk,
 					)}`,
 				);
 				if (missingModule) {

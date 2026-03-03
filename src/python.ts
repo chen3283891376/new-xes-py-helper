@@ -3,6 +3,35 @@ import { platform } from 'os';
 import path from 'path';
 import type { Writable } from 'stream';
 
+export function analyzePythonError(errorOutput: string): {
+	missingModule?: string;
+	suggestedCommand?: string;
+} {
+	const error = errorOutput.trim();
+
+	// 模式匹配
+	const patterns = [
+		// ModuleNotFoundError: No module named 'xxx'
+		/ModuleNotFoundError.*?: No module named ['"]([^'"]+)['"]/,
+		/ImportError.*?: No module named ['"]([^'"]+)['"]/,
+		// cannot import name 'xxx' from 'yyy'
+		/ImportError.*?: cannot import name ['"]([^'"]+)['"]/,
+		// DLL load failed while importing xxx
+		/DLL load failed while importing ['"]([^'"]+)['"]/,
+	];
+
+	for (const pattern of patterns) {
+		const match = error.match(pattern);
+		if (match && match[1]) {
+			return {
+				missingModule: match[1],
+				suggestedCommand: `pip install ${match[1]}`,
+			};
+		}
+	}
+
+	return {};
+}
 export async function getLocalPythonInterpreters(): Promise<
 	{
 		name: string;
