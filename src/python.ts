@@ -60,66 +60,66 @@ export async function getLocalPythonInterpreters(): Promise<
 }
 
 const moduleMap: Record<string, string> = {
-    // 视觉/图像
-    cv2: 'opencv-python',
-    PIL: 'Pillow',
-    
-    // 机器学习/AI
-    sklearn: 'scikit-learn',
-    
-    // 网络/爬虫
-    bs4: 'beautifulsoup4',
-    
-    // 数据库/ORM
-    MySQLdb: 'mysqlclient',
-    psycopg2: 'psycopg2-binary',
-    sqlalchemy: 'SQLAlchemy',
-    
-    // Web框架
-    fastapi: 'fastapi uvicorn[standard]',
-    
-    // 可视化
-    matplotlib: 'matplotlib',
-    plt: 'matplotlib',
-    
-    // 配置/序列化
-    yaml: 'PyYAML',
-    
-    // 日期时间
-    dateutil: 'python-dateutil',
-    
-    // 文件格式
-    pandas_gbq: 'pandas-gbq',
-    
-    // 文档/文本
-    md: 'markdown',
-    
-    // 加密/安全
-    jwt: 'PyJWT',
-    pyjwt: 'PyJWT',
-    
-    // 网络协议
-    grpc: 'grpcio',
-    websockets: 'websockets',
-    socketio: 'python-socketio',
-    mqtt: 'paho-mqtt',
+	// 视觉/图像
+	cv2: 'opencv-python',
+	PIL: 'Pillow',
+
+	// 机器学习/AI
+	sklearn: 'scikit-learn',
+
+	// 网络/爬虫
+	bs4: 'beautifulsoup4',
+
+	// 数据库/ORM
+	MySQLdb: 'mysqlclient',
+	psycopg2: 'psycopg2-binary',
+	sqlalchemy: 'SQLAlchemy',
+
+	// Web框架
+	fastapi: 'fastapi uvicorn[standard]',
+
+	// 可视化
+	matplotlib: 'matplotlib',
+	plt: 'matplotlib',
+
+	// 配置/序列化
+	yaml: 'PyYAML',
+
+	// 日期时间
+	dateutil: 'python-dateutil',
+
+	// 文件格式
+	pandas_gbq: 'pandas-gbq',
+
+	// 文档/文本
+	md: 'markdown',
+
+	// 加密/安全
+	jwt: 'PyJWT',
+	pyjwt: 'PyJWT',
+
+	// 网络协议
+	grpc: 'grpcio',
+	websockets: 'websockets',
+	socketio: 'python-socketio',
+	mqtt: 'paho-mqtt',
 	websocket: 'websocket-client',
-    
-    // 消息应用API
-    telegram: 'python-telegram-bot',
-    telebot: 'pyTelegramBotAPI',
-    discord: 'discord.py',
-    vk_api: 'vk-api',
-    
-    // 图形/二维码
-    qrcode: 'qrcode[pil]',
-    
-    // 科学/地理
-    nx: 'networkx',
-    igraph: 'python-igraph',
-    
-    'skimage': 'scikit-image',
-    'enum': 'enum34',
+
+	// 消息应用API
+	telegram: 'python-telegram-bot',
+	telebot: 'pyTelegramBotAPI',
+	discord: 'discord.py',
+	vk_api: 'vk-api',
+
+	// 图形/二维码
+	qrcode: 'qrcode[pil]',
+
+	// 科学/地理
+	nx: 'networkx',
+	igraph: 'python-igraph',
+
+	skimage: 'scikit-image',
+	enum: 'enum34',
 };
 
 export class PythonProcessManager {
