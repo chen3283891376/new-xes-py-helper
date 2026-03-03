@@ -17,6 +17,7 @@ export function createWsServer(
 ): WsServerHandle {
 	let input = '';
 	let projectPath = '';
+	const isWin = platform() === 'win32';
 
 	const safeSend = (ws: ServerWebSocket<undefined>, payload: string) => {
 		try {
@@ -67,16 +68,15 @@ export function createWsServer(
 		}
 
 		if (data.xml) {
-			const isWin = platform() === 'win32';
 			// data.xml 为Python程序的主代码
 			pythonProcess.onStdout((chunk) => {
 				safeSend(ws, `1${stringToBase64(
-					!isWin ? chunk.replace(/\r\n/g, '\n') : chunk
+					!isWin ? chunk.replaceAll(/\r\n/g, '\n') : chunk
 				)}`);
 			});
 			pythonProcess.onStderr((chunk) => {
 				safeSend(ws, `1${stringToBase64(
-					!isWin ? chunk.replace(/\r\n/g, '\n') : chunk
+					!isWin ? chunk.replaceAll(/\r\n/g, '\n') : chunk
 				)}`);
 			});
 			pythonProcess.onExit(() => {
@@ -102,7 +102,7 @@ export function createWsServer(
 
 	const handleType1 = (ws: ServerWebSocket<undefined>, raw: string) => {
 		let text = raw;
-		if (text === '\r') text = '\r\n';
+		if (text === '\r') text = isWin ? '\r\n' : '\n';
 		if (text === '\x7F') {
 			if (input.length > 0) {
 				input = input.slice(0, -1);
@@ -111,7 +111,7 @@ export function createWsServer(
 			return;
 		}
 		input += text;
-		if (text === '\r\n') {
+		if (text === '\r\n' || text === '\n') {
 			pythonProcess.sendInput(input);
 			input = '';
 		}
