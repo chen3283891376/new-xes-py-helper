@@ -140,6 +140,10 @@ export function createWsServer(
 		if (text === '\r\n' || text === '\n') {
 			pythonProcess.sendInput(input);
 			input = '';
+			ws.send(
+				`1${stringToBase64((text as string).replace(/\n/g, '\r\n'))}`,
+			);
+			return;
 		}
 		if (text === '\x03') {
 			pythonProcess.killProcess();

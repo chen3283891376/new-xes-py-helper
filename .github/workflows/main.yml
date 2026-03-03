@@ -4,7 +4,7 @@ name: Cross-Platform Build with Bun
 
 on:
     push:
-        branches: [main, master]
+        branches: [main]
         tags: ['v*']
     workflow_dispatch:
 
