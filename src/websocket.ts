@@ -122,7 +122,8 @@ export function createWsServer(
 						`1${stringToBase64('[stderr] 开始自动安装缺失模块...\n')}`,
 					);
 					installingMissing = true;
-					const result = await pythonProcess.installPackage(missingModule);
+					const result =
+						await pythonProcess.installPackage(missingModule);
 					safeSend(ws, `1${stringToBase64(result.output)}`);
 					safeSend(
 						ws,
