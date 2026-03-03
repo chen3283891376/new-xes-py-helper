@@ -5,7 +5,7 @@ import { RouteHandler } from './src/route_handler';
 import { createWsServer } from './src/websocket';
 
 (async () => {
-	const pythonInterpreters = getLocalPythonInterpreters();
+	const pythonInterpreters = await getLocalPythonInterpreters();
 	if (pythonInterpreters.length === 0) {
 		console.log('未找到可用的Python环境');
 		process.exit(1);

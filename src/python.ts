@@ -1,69 +1,62 @@
 import { spawn, type Subprocess } from 'bun';
-import { execSync } from 'child_process';
-import { existsSync, statSync } from 'fs';
 import { platform } from 'os';
-import path, { join } from 'path';
+import path from 'path';
 import type { Writable } from 'stream';
 
-/**
- * 获取本地所有Python解释器路径
- * @returns 格式为 { name: string, value: string }[] 的Python解释器列表
- */
-export function getLocalPythonInterpreters(): {
-	name: string;
-	value: string;
-}[] {
-	const pythonPaths: Set<string> = new Set();
-	const isWindows = platform() === 'win32';
+export async function getLocalPythonInterpreters(): Promise<
+	{
+		name: string;
+		value: string;
+	}[]
+> {
+	const results = new Set<string>();
+	const isWin = platform() === 'win32';
 
-	const pathEnv = process.env.PATH || '';
-	const pathDirs = pathEnv.split(isWindows ? ';' : ':');
+	const command = isWin ? 'where' : 'which';
+	const args = isWin ? ['python'] : ['python3'];
 
-	for (const dir of pathDirs) {
-		if (!dir) continue;
-		// 可能的Python可执行文件名
-		const pythonExecutables = isWindows
-			? ['python.exe', 'python3.exe', 'python2.exe']
-			: ['python', 'python3', 'python2'];
-
-		for (const exe of pythonExecutables) {
-			const fullPath = join(dir, exe);
-			if (!existsSync(fullPath) || !statSync(fullPath).isFile()) {
-				continue;
-			}
-			try {
-				execSync(`${fullPath} --version`, { stdio: 'ignore' });
-				pythonPaths.add(fullPath);
-			} catch (e) {
-				continue;
-			}
+	const proc = spawn([command, ...args], {
+		stdout: 'pipe',
+		stderr: 'ignore',
+	});
+	await proc.exited;
+	const out = await new Response(proc.stdout).text();
+	const lines = out.split('\n');
+	for (const line of lines) {
+		if (line.trim().length > 0) {
+			results.add(line.trim());
 		}
 	}
 
-	const resultList: { name: string; value: string }[] = [];
-	pythonPaths.forEach((path) => {
+	const list: { name: string; value: string }[] = [];
+
+	for (const p of results) {
 		try {
-			const versionOutput = execSync(`${path} --version`, {
-				encoding: 'utf8',
-			}).trim();
-			const simplifiedPath = path.replace(
-				process.env.HOME || process.env.USERPROFILE || '',
-				'~',
-			);
-			const name = `${versionOutput} (${simplifiedPath})`;
-			resultList.push({
-				name,
-				value: path,
+			const proc = spawn([p, '--version'], {
+				stdout: 'pipe',
+				stderr: 'pipe',
 			});
-		} catch (e) {
-			resultList.push({
-				name: path,
-				value: path,
+			await proc.exited;
+			const out = await new Response(proc.stdout).text();
+			const err = await new Response(proc.stderr).text();
+			const version = (out + err).trim().replace('Python ', '');
+
+			const home = process.env.HOME ?? process.env.USERPROFILE ?? '';
+			const shortPath = p.replace(home, '~');
+
+			list.push({
+				name: `Python ${version} (${shortPath})`,
+				value: p,
+			});
+		} catch {
+			list.push({
+				name: p,
+				value: p,
 			});
 		}
-	});
+	}
 
-	return resultList;
+	return list;
 }
 
 export class PythonProcessManager {

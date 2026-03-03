@@ -120,8 +120,8 @@ export function createWsServer(
 		port,
 		hostname: '127.0.0.1',
 		websocket: {
-			open(ws) {
-				console.log('open');
+			open(_ws) {
+				console.log('ws连接成功');
 				input = '';
 			},
 			async message(ws, message) {
@@ -135,10 +135,10 @@ export function createWsServer(
 						break;
 				}
 			},
-			close(ws, code, reason) {
-				console.warn('close');
+			close(_ws, _code, _reason) {
+				console.warn('ws连接关闭');
 			},
-			drain(ws) {},
+			drain(_ws) {},
 		},
 		fetch(req, res) {
 			if (req.method === 'OPTIONS') {
