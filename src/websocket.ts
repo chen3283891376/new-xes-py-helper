@@ -10,6 +10,35 @@ import { platform } from 'os';
 interface WsServerHandle {
 	server: ReturnType<typeof Bun.serve>;
 }
+function analyzePythonError(errorOutput: string): {
+	missingModule?: string;
+	suggestedCommand?: string;
+} {
+	const error = errorOutput.trim();
+
+	// 模式匹配
+	const patterns = [
+		// ModuleNotFoundError: No module named 'xxx'
+		/ModuleNotFoundError.*?: No module named ['"]([^'"]+)['"]/,
+		/ImportError.*?: No module named ['"]([^'"]+)['"]/,
+		// cannot import name 'xxx' from 'yyy'
+		/ImportError.*?: cannot import name ['"]([^'"]+)['"]/,
+		// DLL load failed while importing xxx
+		/DLL load failed while importing ['"]([^'"]+)['"]/,
+	];
+
+	for (const pattern of patterns) {
+		const match = error.match(pattern);
+		if (match && match[1]) {
+			return {
+				missingModule: match[1],
+				suggestedCommand: `pip install ${match[1]}`,
+			};
+		}
+	}
+
+	return {};
+}
 
 export function createWsServer(
 	port: number,
@@ -17,6 +46,7 @@ export function createWsServer(
 ): WsServerHandle {
 	let input = '';
 	let projectPath = '';
+	let installingMissing = false;
 	const isWin = platform() === 'win32';
 
 	const safeSend = (ws: ServerWebSocket<undefined>, payload: string) => {
@@ -70,27 +100,52 @@ export function createWsServer(
 		if (data.xml) {
 			// data.xml 为Python程序的主代码
 			pythonProcess.onStdout((chunk) => {
-				safeSend(ws, `1${stringToBase64(
-					!isWin ? chunk.replaceAll(/\r\n/g, '\n') : chunk
-				)}`);
+				safeSend(
+					ws,
+					`1${stringToBase64(
+						!isWin ? chunk.replaceAll(/\r\n/g, '\n') : chunk,
+					)}`,
+				);
 			});
-			pythonProcess.onStderr((chunk) => {
-				safeSend(ws, `1${stringToBase64(
-					!isWin ? chunk.replaceAll(/\r\n/g, '\n') : chunk
-				)}`);
+			pythonProcess.onStderr(async (chunk) => {
+				// console.log(analyzePythonError(chunk).missingModule)
+				const missingModule = analyzePythonError(chunk).missingModule;
+				safeSend(
+					ws,
+					`1${stringToBase64(
+						!isWin ? chunk.replaceAll(/\r\n/g, '\n') : chunk,
+					)}`,
+				);
+				if (missingModule) {
+					safeSend(
+						ws,
+						`1${stringToBase64('[stderr] 开始自动安装缺失模块...\n')}`,
+					);
+					installingMissing = true;
+					const result = await pythonProcess.installPackage(missingModule);
+					safeSend(ws, `1${stringToBase64(result.output)}`);
+					safeSend(
+						ws,
+						`1${stringToBase64('[stderr] 自动安装完成，请重新运行程序...\n')}`,
+					);
+					installingMissing = false;
+					ws.close();
+				}
 			});
 			pythonProcess.onExit(() => {
-				safeSend(
-					ws,
-					'7eyJUeXBlIjogInNpZ25hbCIsICJJbmZvIjogIntcIm5ld1wiOiBbXSwgXCJkZWxcIjogW10sIFwibW9kXCI6IFtdLCBcImRpcl9kZWxcIjogW10sIFwiZGlyX25ld1wiOiBbXSwgXCJ0eXBlXCI6IFwiY2hhbmdlZFwifSJ9',
-				);
-				safeSend(
-					ws,
-					'7eyJUeXBlIjogInJ1bkluZm8iLCAiSW5mbyI6ICJcclxuXHJcblx1NGVlM1x1NzgwMVx1OGZkMFx1ODg0Y1x1N2VkM1x1Njc1ZiJ9',
-				);
-				try {
-					ws.close();
-				} catch {}
+				if (!installingMissing) {
+					try {
+						safeSend(
+							ws,
+							'7eyJUeXBlIjogInNpZ25hbCIsICJJbmZvIjogIntcIm5ld1wiOiBbXSwgXCJkZWxcIjogW10sIFwibW9kXCI6IFtdLCBcImRpcl9kZWxcIjogW10sIFwiZGlyX25ld1wiOiBbXSwgXCJ0eXBlXCI6IFwiY2hhbmdlZFwifSJ9',
+						);
+						safeSend(
+							ws,
+							'7eyJUeXBlIjogInJ1bkluZm8iLCAiSW5mbyI6ICJcclxuXHJcblx1NGVlM1x1NzgwMVx1OGZkMFx1ODg0Y1x1N2VkM1x1Njc1ZiJ9',
+						);
+						ws.close();
+					} catch {}
+				}
 			});
 
 			await pythonProcess.startProcess(
