@@ -1,9 +1,7 @@
 import { join } from 'path';
 import { mkdir, writeFile } from 'fs/promises';
-import { downloadAll } from './downloader';
-import { stringToBase64 } from './utils';
-import { analyzePythonError, PythonProcessManager } from './python';
-import { CORS_HEADERS } from './port_helper';
+import { downloadAll, stringToBase64, CORS_HEADERS } from '../utils';
+import { analyzePythonError, PythonProcessManager } from '../python';
 import type { ServerWebSocket } from 'bun';
 import { platform } from 'os';
 

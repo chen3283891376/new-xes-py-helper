@@ -1,8 +1,7 @@
 import { select } from '@inquirer/prompts';
-import { check, get_port } from './src/port_helper';
+import { checkPorts, getPort } from './src/utils';
 import { getLocalPythonInterpreters, PythonProcessManager } from './src/python';
-import { RouteHandler } from './src/route_handler';
-import { createWsServer } from './src/websocket';
+import { createWsServer, HttpRouteHandler } from './src/servers';
 
 (async () => {
 	const pythonInterpreters = await getLocalPythonInterpreters();
@@ -18,8 +17,8 @@ import { createWsServer } from './src/websocket';
 	// 检查端口是否可用
 	let port: number = 55820;
 
-	if (await check()) {
-		port = get_port();
+	if (await checkPorts()) {
+		port = getPort();
 		console.log('端口检查通过', port, port + 1);
 	} else {
 		console.log('端口检查失败');
@@ -30,7 +29,7 @@ import { createWsServer } from './src/websocket';
 	const httpServer = Bun.serve({
 		port: port,
 		hostname: '127.0.0.1',
-		routes: RouteHandler.getRoutes(),
+		routes: HttpRouteHandler.getRoutes(),
 	});
 
 	// 开启Websocket服务

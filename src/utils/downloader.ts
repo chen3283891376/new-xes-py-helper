@@ -1,4 +1,4 @@
-import type { FileNode, FileTreeStructure } from './interfaces/filetree';
+import type { FileNode, FileTreeStructure } from '../interfaces/filetree';
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 

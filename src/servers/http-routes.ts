@@ -1,6 +1,6 @@
-import { CORS_HEADERS } from './port_helper';
+import { CORS_HEADERS } from '../utils';
 
-export class RouteHandler {
+export class HttpRouteHandler {
 	static readonly RESPONSE_INIT: ResponseInit = {
 		status: 200,
 		statusText: 'OK',

@@ -61,7 +61,7 @@ function isNumber(str: string): boolean {
 	return !isNaN(parseInt(str)) && isFinite(parseInt(str));
 }
 
-export async function check(): Promise<boolean> {
+export async function checkPorts(): Promise<boolean> {
 	const args = process.argv.slice(2);
 
 	for (const arg of args) {
@@ -103,12 +103,6 @@ export async function check(): Promise<boolean> {
 	return false;
 }
 
-export function get_port() {
+export function getPort() {
 	return port;
 }
-
-export const CORS_HEADERS = {
-	'Access-Control-Allow-Origin': '*',
-	'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
-	'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};

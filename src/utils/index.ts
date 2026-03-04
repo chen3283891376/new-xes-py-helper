@@ -1,3 +1,6 @@
+export * from './downloader';
+export * from './port';
+
 function stringToBase64(str: string): string {
 	const encoder = new TextEncoder();
 	const data = encoder.encode(str);
@@ -13,5 +16,10 @@ function base64ToString(base64: string): string {
 	const decoder = new TextDecoder();
 	return decoder.decode(bytes);
 }
-
 export { stringToBase64, base64ToString };
+
+export const CORS_HEADERS = {
+	'Access-Control-Allow-Origin': '*',
+	'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
+	'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
