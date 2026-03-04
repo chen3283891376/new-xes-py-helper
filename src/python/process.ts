@@ -6,29 +6,73 @@ import { moduleMap } from './utils';
 
 export class PythonProcessManager {
 	private pythonProcess: Subprocess | null = null;
-	private pythonPath: string = 'python';
+	public pythonPath: string = 'python';
 	private processReady = false;
 	private pendingInputs: string[] = [];
 
-	// callbacks for streaming output
-	private stdoutCallback: ((chunk: string) => void) | null = null;
-	private stderrCallback: ((chunk: string) => void) | null = null;
-	private exitCallback: ((code: number) => void) | null = null;
+	// 使用 Set 支持多个回调监听器
+	private stdoutCallbacks: Set<(chunk: string) => void> = new Set();
+	private stderrCallbacks: Set<(chunk: string) => void> = new Set();
+	private exitCallbacks: Set<(code: number) => void> = new Set();
 
 	constructor(pythonPath: string) {
 		this.pythonPath = pythonPath;
 	}
 
+	// 注册回调
 	onStdout(cb: (chunk: string) => void) {
-		this.stdoutCallback = cb;
+		this.stdoutCallbacks.add(cb);
+	}
+
+	offStdout(cb: (chunk: string) => void) {
+		this.stdoutCallbacks.delete(cb);
 	}
 
 	onStderr(cb: (chunk: string) => void) {
-		this.stderrCallback = cb;
+		this.stderrCallbacks.add(cb);
+	}
+
+	offStderr(cb: (chunk: string) => void) {
+		this.stderrCallbacks.delete(cb);
 	}
 
 	onExit(cb: (code: number) => void) {
-		this.exitCallback = cb;
+		this.exitCallbacks.add(cb);
+	}
+
+	offExit(cb: (code: number) => void) {
+		this.exitCallbacks.delete(cb);
+	}
+
+	// 触发回调
+	private emitStdout(chunk: string) {
+		this.stdoutCallbacks.forEach(cb => {
+			try {
+				cb(chunk);
+			} catch {
+				// 忽略回调错误
+			}
+		});
+	}
+
+	private emitStderr(chunk: string) {
+		this.stderrCallbacks.forEach(cb => {
+			try {
+				cb(chunk);
+			} catch {
+				// 忽略回调错误
+			}
+		});
+	}
+
+	private emitExit(code: number) {
+		this.exitCallbacks.forEach(cb => {
+			try {
+				cb(code);
+			} catch {
+				// 忽略回调错误
+			}
+		});
 	}
 
 	async startProcess(filePath: string, workDir: string): Promise<void> {
@@ -47,90 +91,90 @@ export class PythonProcessManager {
 
 		this.processReady = true;
 
+		// 设置输出流读取
+		await this.setupProcessStreams(this.pythonProcess);
+
+		// 处理积压的输入
+		while (this.pendingInputs.length > 0) {
+			const input = this.pendingInputs.shift()!;
+			this.sendInput(input);
+		}
+
+		// 监听进程退出
+		this.pythonProcess.exited
+			.then((code) => {
+				this.processReady = false;
+				this.pythonProcess = null;
+				this.emitExit(code);
+			})
+			.catch(() => {
+				// 忽略退出错误
+			});
+	}
+
+	// 通用流读取方法
+	private async setupProcessStreams(proc: Subprocess) {
 		const decoder = new TextDecoder();
+		
 		const readStream = async (
 			reader: ReadableStreamDefaultReader<Uint8Array>,
-			cb: ((chunk: string) => void) | null,
+			isStdout: boolean
 		) => {
 			try {
 				while (true) {
 					const { done, value } = await reader.read();
 					if (done) break;
 					const text = decoder.decode(value, { stream: true });
-					if (cb) cb(text);
+					if (isStdout) {
+						this.emitStdout(text);
+					} else {
+						this.emitStderr(text);
+					}
 				}
 			} catch {
-				// ignore - process may have closed the stream
+				// 流已关闭或进程终止
 			}
 		};
 
-		if (this.pythonProcess.stdout) {
-			readStream(
-				// @ts-expect-error - getReader is not defined on WritableStream
-				this.pythonProcess.stdout.getReader(),
-				this.stdoutCallback,
-			);
+		if (proc.stdout) {
+			// @ts-expect-error - getReader 类型问题
+			readStream(proc.stdout.getReader(), true);
 		}
-		if (this.pythonProcess.stderr) {
-			readStream(
-				// @ts-expect-error - getReader is not defined on WritableStream
-				this.pythonProcess.stderr.getReader(),
-				this.stderrCallback,
-			);
+		
+		if (proc.stderr) {
+			// @ts-expect-error - getReader 类型问题
+			readStream(proc.stderr.getReader(), false);
 		}
-
-		while (this.pendingInputs.length > 0) {
-			const input = this.pendingInputs.shift()!;
-			this.sendInput(input);
-		}
-
-		this.pythonProcess.exited
-			.then((code) => {
-				this.processReady = false;
-				this.pythonProcess = null;
-				if (this.exitCallback) {
-					try {
-						this.exitCallback(code);
-					} catch {
-						// ignore
-					}
-				}
-			})
-			.catch(() => {
-				// ignore
-			});
 	}
 
 	sendInput(data: string): void {
 		if (this.pythonProcess && this.pythonProcess.stdin) {
 			(this.pythonProcess.stdin as unknown as Writable).write(
-				new TextEncoder().encode(data),
+				new TextEncoder().encode(data)
 			);
 		} else if (!this.processReady) {
 			this.pendingInputs.push(data);
 		}
 	}
+
 	sendCtrlC(): void {
 		if (this.pythonProcess && this.pythonProcess.stdin) {
 			kill(this.pythonProcess.pid, 'SIGINT');
 		}
 	}
 
-	// 读取进程输出（一次性获取）。
-	// 注意：如果你已经通过 `onStdout`/`onStderr` 注册了回调，此方法
-	// 可能不会返回任何数据，因为流已经被消费。建议使用回调
-	// 或者只在不需要实时流式传输的场景下调用它。
+	// 读取进程输出（一次性获取）
 	async readOutput(): Promise<{ stdout: string; stderr: string }> {
 		if (!this.pythonProcess) {
 			throw new Error('进程未启动');
 		}
-		if (this.stdoutCallback || this.stderrCallback) {
+		if (this.stdoutCallbacks.size > 0 || this.stderrCallbacks.size > 0) {
 			throw new Error('无法在启用流回调的情况下读取完整输出');
 		}
 
-		// @ts-expect-error - getReader is not defined on WritableStream
+		// @ts-expect-error - getReader 类型问题
 		const stdoutReader = this.pythonProcess.stdout?.getReader();
-		// @ts-expect-error - getReader is not defined on WritableStream
+		// @ts-expect-error - getReader 类型问题
 		const stderrReader = this.pythonProcess.stderr?.getReader();
 		const decoder = new TextDecoder();
 
@@ -147,8 +191,8 @@ export class PythonProcessManager {
 		};
 
 		const [newStdout, newStderr] = await Promise.all([
-			readStream(stdoutReader),
-			readStream(stderrReader),
+			stdoutReader ? readStream(stdoutReader) : Promise.resolve(''),
+			stderrReader ? readStream(stderrReader) : Promise.resolve(''),
 		]);
 
 		return { stdout: newStdout, stderr: newStderr };
@@ -169,49 +213,80 @@ export class PythonProcessManager {
 		}
 	}
 
-	async installPackage(
+	// 安装包，输出会通过 onStdout/onStderr 回调
+	installPackage(
 		packageName: string,
 	): Promise<{ exitCode: number; output: string }> {
-		const proc = spawn({
-			cmd: [
-				this.pythonPath,
-				'-m',
-				'pip',
-				'install',
-				moduleMap[packageName] || packageName,
-				'--no-cache-dir',
-				'--no-warn-script-location',
-				'--only-binary',
-				':all:',
-			],
-			stdout: 'pipe',
-			stderr: 'pipe',
+		// eslint-disable-next-line no-async-promise-executor
+		return new Promise(async (resolve) => {
+			let fullOutput = '';
+			
+			const collectOutput = (chunk: string) => {
+				fullOutput += chunk;
+			};
+			
+			this.onStdout(collectOutput);
+			this.onStderr(collectOutput);
+			
+			try {
+				const proc = spawn({
+					cmd: [
+						this.pythonPath,
+						'-m',
+						'pip',
+						'install',
+						moduleMap[packageName] || packageName,
+						'--no-cache-dir',
+						'--no-warn-script-location',
+						'--only-binary',
+						':all:',
+					],
+					stdout: 'pipe',
+					stderr: 'pipe',
+				});
+
+				await this.readInstallationOutput(proc);
+				
+				const exitCode = await proc.exited;
+				
+				resolve({ exitCode, output: fullOutput });
+				
+			} finally {
+				this.offStdout(collectOutput);
+				this.offStderr(collectOutput);
+			}
 		});
+	}
 
-		const stdoutReader = proc.stdout.getReader();
-		const stderrReader = proc.stderr.getReader();
+	private async readInstallationOutput(proc: Subprocess) {
 		const decoder = new TextDecoder();
-		let fullOutput = '';
 
-		const readAll = async (
+		const readStream = async (
 			reader: ReadableStreamDefaultReader<Uint8Array>,
+			isStdout: boolean
 		) => {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				fullOutput += decoder.decode(value, { stream: true });
+			try {
+				while (true) {
+					const { done, value } = await reader.read();
+					if (done) break;
+					const text = decoder.decode(value, { stream: true });
+					if (isStdout) {
+						this.emitStdout(text);
+					} else {
+						this.emitStderr(text);
+					}
+				}
+			} catch {
+				// 流读取完成
 			}
 		};
-
+		
 		await Promise.all([
-			// @ts-expect-error - 奇奇怪怪的类型错误
-			readAll(stdoutReader),
-			// @ts-expect-error - 奇奇怪怪的类型错误
-			readAll(stderrReader),
+			// @ts-expect-error - 类型问题
+			proc.stdout ? readStream(proc.stdout.getReader(), true) : Promise.resolve(),
+			// @ts-expect-error - 类型问题
+			proc.stderr ? readStream(proc.stderr.getReader(), false) : Promise.resolve(),
 		]);
-
-		const exitCode = await proc.exited;
-		return { exitCode, output: fullOutput };
 	}
 
 	isRunning(): boolean {
@@ -228,5 +303,13 @@ export class PythonProcessManager {
 
 	setPythonPath(path: string): void {
 		this.pythonPath = path;
+	}
+
+	getCallbackCounts() {
+		return {
+			stdout: this.stdoutCallbacks.size,
+			stderr: this.stderrCallbacks.size,
+			exit: this.exitCallbacks.size,
+		};
 	}
 }

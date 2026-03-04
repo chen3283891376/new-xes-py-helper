@@ -90,16 +90,24 @@ export function createWsServer(
 				if (missingModule) {
 					safeSend(
 						ws,
-						`1${stringToBase64('[stderr] 开始自动安装缺失模块...\n')}`,
+						`1${stringToBase64('[stderr] 开始自动安装缺失模块...\r\n')}`,
+					);
+					const installProcess = new PythonProcessManager(
+						pythonProcess.pythonPath
 					);
 					installingMissing = true;
-					const result =
-						await pythonProcess.installPackage(missingModule);
-					safeSend(ws, `1${stringToBase64(result.output)}`);
+					installProcess.onStdout((chunk) => {
+						safeSend(
+							ws,
+							`1${stringToBase64(chunk.replace(/\n/g, '\r\n').trim())}`
+						)
+					});
+					await installProcess.installPackage(missingModule);
 					safeSend(
 						ws,
-						`1${stringToBase64('[stderr] 自动安装完成，请重新运行程序...\n')}`,
+						`\r\n1${stringToBase64('[stderr] 自动安装完成，请重新运行程序...\r\n')}`,
 					);
+					installProcess.killProcess();
 					installingMissing = false;
 					ws.close();
 				}
