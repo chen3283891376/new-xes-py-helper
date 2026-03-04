@@ -9,14 +9,38 @@ export class PythonProcessManager {
 	public pythonPath: string = 'python';
 	private processReady = false;
 	private pendingInputs: string[] = [];
+	private venvPath: string | null = null;
 
-	// 使用 Set 支持多个回调监听器
 	private stdoutCallbacks: Set<(chunk: string) => void> = new Set();
 	private stderrCallbacks: Set<(chunk: string) => void> = new Set();
 	private exitCallbacks: Set<(code: number) => void> = new Set();
 
-	constructor(pythonPath: string) {
+	constructor(pythonPath: string, venvPath?: string) {
 		this.pythonPath = pythonPath;
+		if (venvPath) {
+			this.venvPath = venvPath;
+		}
+	}
+
+	// 设置/更新 venv 路径
+	setVenvPath(venvPath: string): void {
+		this.venvPath = venvPath;
+		this.updatePythonPath();
+	}
+
+	// 更新 Python 路径
+	private updatePythonPath(): void {
+		if (this.venvPath) {
+			if (process.platform === 'win32') {
+				this.pythonPath = path.join(
+					this.venvPath,
+					'Scripts',
+					'python.exe',
+				);
+			} else {
+				this.pythonPath = path.join(this.venvPath, 'bin', 'python');
+			}
+		}
 	}
 
 	// 注册回调
@@ -46,7 +70,7 @@ export class PythonProcessManager {
 
 	// 触发回调
 	private emitStdout(chunk: string) {
-		this.stdoutCallbacks.forEach(cb => {
+		this.stdoutCallbacks.forEach((cb) => {
 			try {
 				cb(chunk);
 			} catch {
@@ -56,7 +80,7 @@ export class PythonProcessManager {
 	}
 
 	private emitStderr(chunk: string) {
-		this.stderrCallbacks.forEach(cb => {
+		this.stderrCallbacks.forEach((cb) => {
 			try {
 				cb(chunk);
 			} catch {
@@ -66,7 +90,7 @@ export class PythonProcessManager {
 	}
 
 	private emitExit(code: number) {
-		this.exitCallbacks.forEach(cb => {
+		this.exitCallbacks.forEach((cb) => {
 			try {
 				cb(code);
 			} catch {
@@ -76,6 +100,11 @@ export class PythonProcessManager {
 	}
 
 	async startProcess(filePath: string, workDir: string): Promise<void> {
+		// 如果设置了 venv 路径，更新 Python 路径
+		if (this.venvPath) {
+			this.updatePythonPath();
+		}
+
 		this.pythonProcess = spawn({
 			cmd: [this.pythonPath, '-u', path.basename(filePath)],
 			cwd: workDir,
@@ -86,6 +115,14 @@ export class PythonProcessManager {
 				...process.env,
 				PYTHONIOENCODING: 'utf-8',
 				PYTHONUTF8: '1',
+				// 设置 venv 激活环境变量
+				...(this.venvPath && {
+					VIRTUAL_ENV: this.venvPath,
+					PATH:
+						process.platform === 'win32'
+							? `${path.join(this.venvPath, 'Scripts')};${process.env.PATH}`
+							: `${path.join(this.venvPath, 'bin')}:${process.env.PATH}`,
+				}),
 			},
 		});
 
@@ -115,10 +152,10 @@ export class PythonProcessManager {
 	// 通用流读取方法
 	private async setupProcessStreams(proc: Subprocess) {
 		const decoder = new TextDecoder();
-		
+
 		const readStream = async (
 			reader: ReadableStreamDefaultReader<Uint8Array>,
-			isStdout: boolean
+			isStdout: boolean,
 		) => {
 			try {
 				while (true) {
@@ -140,7 +177,7 @@ export class PythonProcessManager {
 			// @ts-expect-error - getReader 类型问题
 			readStream(proc.stdout.getReader(), true);
 		}
-		
+
 		if (proc.stderr) {
 			// @ts-expect-error - getReader 类型问题
 			readStream(proc.stderr.getReader(), false);
@@ -150,7 +187,7 @@ export class PythonProcessManager {
 	sendInput(data: string): void {
 		if (this.pythonProcess && this.pythonProcess.stdin) {
 			(this.pythonProcess.stdin as unknown as Writable).write(
-				new TextEncoder().encode(data)
+				new TextEncoder().encode(data),
 			);
 		} else if (!this.processReady) {
 			this.pendingInputs.push(data);
@@ -213,44 +250,60 @@ export class PythonProcessManager {
 		}
 	}
 
-	// 安装包，输出会通过 onStdout/onStderr 回调
+	// 安装包到 venv
 	installPackage(
 		packageName: string,
+		upgrade: boolean = false,
 	): Promise<{ exitCode: number; output: string }> {
-		// eslint-disable-next-line no-async-promise-executor
-		return new Promise(async (resolve) => {
+		return new Promise((resolve) => {
 			let fullOutput = '';
-			
+
 			const collectOutput = (chunk: string) => {
 				fullOutput += chunk;
 			};
-			
+
 			this.onStdout(collectOutput);
 			this.onStderr(collectOutput);
-			
+
 			try {
+				const cmd = [
+					this.pythonPath,
+					'-m',
+					'pip',
+					'install',
+					moduleMap[packageName] || packageName,
+					'--no-cache-dir',
+					'--no-warn-script-location',
+					'--only-binary',
+					':all:',
+				];
+
+				if (upgrade) {
+					cmd.splice(3, 0, '--upgrade');
+				}
+
 				const proc = spawn({
-					cmd: [
-						this.pythonPath,
-						'-m',
-						'pip',
-						'install',
-						moduleMap[packageName] || packageName,
-						'--no-cache-dir',
-						'--no-warn-script-location',
-						'--only-binary',
-						':all:',
-					],
+					cmd,
 					stdout: 'pipe',
 					stderr: 'pipe',
+					env: {
+						...process.env,
+						...(this.venvPath && {
+							VIRTUAL_ENV: this.venvPath,
+							PATH:
+								process.platform === 'win32'
+									? `${path.join(this.venvPath, 'Scripts')};${process.env.PATH}`
+									: `${path.join(this.venvPath, 'bin')}:${process.env.PATH}`,
+						}),
+					},
 				});
 
-				await this.readInstallationOutput(proc);
-				
-				const exitCode = await proc.exited;
-				
-				resolve({ exitCode, output: fullOutput });
-				
+				this.readInstallationOutput(proc).then(async () => {
+					const exitCode = await proc.exited;
+					this.offStdout(collectOutput);
+					this.offStderr(collectOutput);
+					resolve({ exitCode, output: fullOutput });
+				});
 			} finally {
 				this.offStdout(collectOutput);
 				this.offStderr(collectOutput);
@@ -258,12 +311,22 @@ export class PythonProcessManager {
 		});
 	}
 
+	// 检查是否在 venv 中运行
+	isInVenv(): boolean {
+		return this.venvPath !== null;
+	}
+
+	// 获取 venv 路径
+	getVenvPath(): string | null {
+		return this.venvPath;
+	}
+
 	private async readInstallationOutput(proc: Subprocess) {
 		const decoder = new TextDecoder();
 
 		const readStream = async (
 			reader: ReadableStreamDefaultReader<Uint8Array>,
-			isStdout: boolean
+			isStdout: boolean,
 		) => {
 			try {
 				while (true) {
@@ -280,12 +343,16 @@ export class PythonProcessManager {
 				// 流读取完成
 			}
 		};
-		
+
 		await Promise.all([
+			proc.stdout
 			// @ts-expect-error - 类型问题
-			proc.stdout ? readStream(proc.stdout.getReader(), true) : Promise.resolve(),
+				? readStream(proc.stdout.getReader(), true)
+				: Promise.resolve(),
+			proc.stderr
 			// @ts-expect-error - 类型问题
-			proc.stderr ? readStream(proc.stderr.getReader(), false) : Promise.resolve(),
+				? readStream(proc.stderr.getReader(), false)
+				: Promise.resolve(),
 		]);
 	}
 

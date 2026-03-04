@@ -40,7 +40,7 @@ export async function getLocalPythonInterpreters(): Promise<
 	const isWin = platform() === 'win32';
 
 	const command = isWin ? 'where' : 'which';
-	const args = isWin ? ['python'] : ['python3'];
+	const args = isWin ? ['python'] : ['python3', '-a'];
 
 	const proc = spawn([command, ...args], {
 		stdout: 'pipe',
