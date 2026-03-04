@@ -102,6 +102,12 @@ export function createWsServer(
 							`1${stringToBase64(chunk.replace(/\n/g, '\r\n').trim())}`,
 						);
 					});
+					installProcess.onStderr((chunk) => {
+						safeSend(
+							ws,
+							`1${stringToBase64(chunk.replace(/\n/g, '\r\n').trim())}`,
+						);
+					});
 					await installProcess.installPackage(missingModule);
 					safeSend(
 						ws,
