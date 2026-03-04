@@ -1,5 +1,5 @@
-import { spawn } from "bun";
-import { platform } from "os";
+import { spawn } from 'bun';
+import { platform } from 'os';
 
 export function analyzePythonError(errorOutput: string): {
 	missingModule?: string;

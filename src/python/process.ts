@@ -112,7 +112,7 @@ export class PythonProcessManager {
 	}
 	sendCtrlC(): void {
 		if (this.pythonProcess && this.pythonProcess.stdin) {
-			kill(this.pythonProcess.pid, 'SIGINT')
+			kill(this.pythonProcess.pid, 'SIGINT');
 		}
 	}
 
