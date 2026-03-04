@@ -251,64 +251,58 @@ export class PythonProcessManager {
 	}
 
 	// 安装包到 venv
-	installPackage(
-		packageName: string,
-		upgrade: boolean = false,
-	): Promise<{ exitCode: number; output: string }> {
-		return new Promise((resolve) => {
-			let fullOutput = '';
+	async installPackage(packageName: string, upgrade: boolean = false) {
+		let fullOutput = '';
 
-			const collectOutput = (chunk: string) => {
-				fullOutput += chunk;
-			};
+		const collectOutput = (chunk: string) => {
+			fullOutput += chunk;
+		};
 
-			this.onStdout(collectOutput);
-			this.onStderr(collectOutput);
+		this.onStdout(collectOutput);
+		this.onStderr(collectOutput);
 
-			try {
-				const cmd = [
-					this.pythonPath,
-					'-m',
-					'pip',
-					'install',
-					moduleMap[packageName] || packageName,
-					'--no-cache-dir',
-					'--no-warn-script-location',
-					'--only-binary',
-					':all:',
-				];
+		try {
+			const cmd = [
+				this.pythonPath,
+				'-m',
+				'pip',
+				'install',
+				moduleMap[packageName] || packageName,
+				'--no-cache-dir',
+				'--no-warn-script-location',
+				'--only-binary',
+				':all:',
+			];
 
-				if (upgrade) {
-					cmd.splice(3, 0, '--upgrade');
-				}
-
-				const proc = spawn({
-					cmd,
-					stdout: 'pipe',
-					stderr: 'pipe',
-					env: {
-						...process.env,
-						...(this.venvPath && {
-							VIRTUAL_ENV: this.venvPath,
-							PATH:
-								process.platform === 'win32'
-									? `${path.join(this.venvPath, 'Scripts')};${process.env.PATH}`
-									: `${path.join(this.venvPath, 'bin')}:${process.env.PATH}`,
-						}),
-					},
-				});
-
-				this.readInstallationOutput(proc).then(async () => {
-					const exitCode = await proc.exited;
-					this.offStdout(collectOutput);
-					this.offStderr(collectOutput);
-					resolve({ exitCode, output: fullOutput });
-				});
-			} finally {
-				this.offStdout(collectOutput);
-				this.offStderr(collectOutput);
+			if (upgrade) {
+				cmd.splice(3, 0, '--upgrade');
 			}
-		});
+
+			const proc = spawn({
+				cmd,
+				stdout: 'pipe',
+				stderr: 'pipe',
+				env: {
+					...process.env,
+					...(this.venvPath && {
+						VIRTUAL_ENV: this.venvPath,
+						PATH:
+							process.platform === 'win32'
+								? `${path.join(this.venvPath, 'Scripts')};${process.env.PATH}`
+								: `${path.join(this.venvPath, 'bin')}:${process.env.PATH}`,
+					}),
+				},
+			});
+
+			await this.readInstallationOutput(proc);
+			const exitCode = await proc.exited;
+			this.offStdout(collectOutput);
+			this.offStderr(collectOutput);
+			return { exitCode, output: fullOutput };
+		} finally {
+			this.offStdout(collectOutput);
+			this.offStderr(collectOutput);
+		}
 	}
 
 	// 检查是否在 venv 中运行
@@ -346,12 +340,12 @@ export class PythonProcessManager {
 
 		await Promise.all([
 			proc.stdout
-			// @ts-expect-error - 类型问题
-				? readStream(proc.stdout.getReader(), true)
+				? // @ts-expect-error - 类型问题
+					readStream(proc.stdout.getReader(), true)
 				: Promise.resolve(),
 			proc.stderr
-			// @ts-expect-error - 类型问题
-				? readStream(proc.stderr.getReader(), false)
+				? // @ts-expect-error - 类型问题
+					readStream(proc.stderr.getReader(), false)
 				: Promise.resolve(),
 		]);
 	}
