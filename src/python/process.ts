@@ -59,21 +59,21 @@ export class PythonProcessManager {
 					const text = decoder.decode(value, { stream: true });
 					if (cb) cb(text);
 				}
-			} catch (_err) {
+			} catch {
 				// ignore - process may have closed the stream
 			}
 		};
 
 		if (this.pythonProcess.stdout) {
 			readStream(
-				// @ts-ignore
+				// @ts-expect-error - getReader is not defined on WritableStream
 				this.pythonProcess.stdout.getReader(),
 				this.stdoutCallback,
 			);
 		}
 		if (this.pythonProcess.stderr) {
 			readStream(
-				// @ts-ignore
+				// @ts-expect-error - getReader is not defined on WritableStream
 				this.pythonProcess.stderr.getReader(),
 				this.stderrCallback,
 			);
@@ -84,21 +84,20 @@ export class PythonProcessManager {
 			this.sendInput(input);
 		}
 
-		this.pythonProcess.exited
-			.then((code) => {
-				this.processReady = false;
-				this.pythonProcess = null;
-				if (this.exitCallback) {
-					try {
-						this.exitCallback(code);
-					} catch (_e) {
-						// ignore
-					}
+		try {
+			const code = await this.pythonProcess.exited;
+			this.processReady = false;
+			this.pythonProcess = null;
+			if (this.exitCallback) {
+				try {
+					this.exitCallback(code);
+				} catch {
+					// ignore
 				}
-			})
-			.catch(() => {
-				// ignore
-			});
+			}
+		} catch {
+			// ignore
+		}
 	}
 
 	sendInput(data: string): void {
@@ -128,14 +127,14 @@ export class PythonProcessManager {
 			throw new Error('无法在启用流回调的情况下读取完整输出');
 		}
 
-		// @ts-ignore
+		// @ts-expect-error - getReader is not defined on WritableStream
 		const stdoutReader = this.pythonProcess.stdout?.getReader();
-		// @ts-ignore
+		// @ts-expect-error - getReader is not defined on WritableStream
 		const stderrReader = this.pythonProcess.stderr?.getReader();
 		const decoder = new TextDecoder();
 
-		let stdout = '';
-		let stderr = '';
+		const stdout = '';
+		const stderr = '';
 
 		const readStream = async (
 			reader: ReadableStreamDefaultReader<Uint8Array>,
@@ -207,9 +206,9 @@ export class PythonProcessManager {
 		};
 
 		await Promise.all([
-			// @ts-ignore
+			// @ts-expect-error - 奇奇怪怪的类型错误
 			readAll(stdoutReader),
-			// @ts-ignore
+			// @ts-expect-error - 奇奇怪怪的类型错误
 			readAll(stderrReader),
 		]);
 

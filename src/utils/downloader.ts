@@ -38,7 +38,7 @@ const downloadOnce = async (data: FileNode, dir: string): Promise<boolean> => {
 							await writeFile(filePath, buf);
 							return true;
 						}
-					} catch (e) {
+					} catch {
 						// ignore and try next cdn
 					}
 

@@ -7,18 +7,25 @@
 		"dev": "bun index.ts",
 		"build": "bun build ./index.ts --compile --bytecode --outfile helper --production --minify-whitespace --minify-syntax --minify-identifiers",
 		"format": "prettier --write .",
+		"lint": "eslint .",
 		"fuck-u-code": "fuck-u-code analyze -l zh"
 	},
 	"devDependencies": {
+		"@eslint/js": "^10.0.1",
 		"@types/bun": "latest",
 		"@types/ws": "^8.18.1",
-		"prettier": "^3.8.1"
+		"eslint": "^10.0.2",
+		"globals": "^17.4.0",
+		"jiti": "^2.6.1",
+		"prettier": "^3.8.1",
+		"typescript-eslint": "^8.56.1"
 	},
 	"peerDependencies": {
-		"typescript": "^5"
+		"typescript": "^5.9.3"
 	},
 	"dependencies": {
 		"@inquirer/prompts": "^8.3.0",
+		"@types/node": "^25.3.3",
 		"net": "^1.0.2",
 		"path": "^0.12.7"
 	}

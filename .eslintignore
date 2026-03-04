@@ -1,0 +1,10 @@
+node_modules/
+dist/
+build/
+coverage/
+temp/
+.next/
+.nuxt/
+.cache/
+.parcel-cache/
+.vscode/

@@ -31,7 +31,7 @@ function checkPortByBind(port: number) {
 	});
 }
 function checkPort(port: number, ip: string = '127.0.0.1') {
-	return new Promise((resolve, reject) => {
+	return new Promise((resolve) => {
 		const socket = new net.Socket();
 		socket.setTimeout(100);
 		socket.on('connect', () => {

@@ -42,7 +42,7 @@ export class HttpRouteHandler {
 		};
 	}
 
-	private static createJsonResponse(data: any) {
+	private static createJsonResponse(data: unknown) {
 		return Response.json(data, this.RESPONSE_INIT);
 	}
 }

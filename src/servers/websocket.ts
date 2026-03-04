@@ -47,7 +47,7 @@ export function createWsServer(
 			ws.send('7eyJUeXBlIjogImFzc2V0cyIsICJJbmZvIjogInN0YXJ0In0=');
 			projectPath = join(process.cwd(), 'temp', String(Date.now()));
 			await mkdir(projectPath, { recursive: true });
-			if ((data.assets as any[]).length > 0) {
+			if (data.assets.length > 0) {
 				await downloadAll(data.assets, projectPath);
 			}
 			await writeFile(
@@ -113,7 +113,9 @@ export function createWsServer(
 							'7eyJUeXBlIjogInJ1bkluZm8iLCAiSW5mbyI6ICJcclxuXHJcblx1NGVlM1x1NzgwMVx1OGZkMFx1ODg0Y1x1N2VkM1x1Njc1ZiJ9',
 						);
 						ws.close();
-					} catch {}
+					} catch {
+						// ignore
+					}
 				}
 			});
 
@@ -127,37 +129,35 @@ export function createWsServer(
 	const handleType1 = (ws: ServerWebSocket<undefined>, raw: string) => {
 		let text = raw;
 		if (text === '\r') text = isWin ? '\r\n' : '\n';
-		if (text === '\x7F') {
-			if (input.length > 0) {
-				input = input.slice(0, -1);
-				ws.send(`1${stringToBase64('\b \b')}`);
-			}
-			return;
+		switch (text) {
+			case '\x7f':
+				if (input.length > 0) {
+					input = input.slice(0, -1);
+					ws.send(`1${stringToBase64('\b \b')}`);
+				}
+				break;
+			case '\r\n':
+			case '\n':
+				pythonProcess.sendInput(input);
+				input = '';
+				ws.send(
+					`1${stringToBase64((text as string).replace(/\n/g, '\r\n'))}`,
+				);
+				break;
+			case '\x03':
+				ws.send(`1${stringToBase64('^C')}`);
+				pythonProcess.sendCtrlC();
+				break;
+			default:
+				ws.send(`1${stringToBase64(text as string)}`);
 		}
-		input += text;
-		if (text === '\r\n' || text === '\n') {
-			pythonProcess.sendInput(input);
-			input = '';
-			ws.send(
-				`1${stringToBase64((text as string).replace(/\n/g, '\r\n'))}`,
-			);
-			return;
-		}
-		if (text === '\x03') {
-			ws.send(`1${stringToBase64('^C')}`);
-			pythonProcess.sendCtrlC();
-			// pythonProcess.killProcess();
-			// ws.close();
-			return;
-		}
-		ws.send(`1${stringToBase64(text as string)}`);
 	};
 
 	const wsServer = Bun.serve({
 		port,
 		hostname: '127.0.0.1',
 		websocket: {
-			open(_ws) {
+			open() {
 				console.log('ws连接成功');
 				input = '';
 			},
@@ -172,10 +172,9 @@ export function createWsServer(
 						break;
 				}
 			},
-			close(_ws, _code, _reason) {
+			close() {
 				console.warn('ws连接关闭');
 			},
-			drain(_ws) {},
 		},
 		fetch(req, res) {
 			if (req.method === 'OPTIONS') {
@@ -186,7 +185,11 @@ export function createWsServer(
 			}
 			if (req.headers.get('upgrade') === 'websocket') {
 				res.upgrade(req, {
-					data: { clientId: Date.now(), src: '/', res } as any,
+					data: {
+						clientId: Date.now(),
+						src: '/',
+						res,
+					} as unknown as undefined,
 				});
 				return;
 			}

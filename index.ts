@@ -26,7 +26,7 @@ import { createWsServer, HttpRouteHandler } from './src/servers';
 	}
 
 	// 开启HTTP服务
-	const httpServer = Bun.serve({
+	Bun.serve({
 		port: port,
 		hostname: '127.0.0.1',
 		routes: HttpRouteHandler.getRoutes(),
@@ -35,5 +35,5 @@ import { createWsServer, HttpRouteHandler } from './src/servers';
 	// 开启Websocket服务
 	const pythonProcess = new PythonProcessManager(currentPython);
 
-	const { server: wsServer } = createWsServer(port + 1, pythonProcess);
+	createWsServer(port + 1, pythonProcess);
 })();
