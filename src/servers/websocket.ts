@@ -132,8 +132,10 @@ export function createWsServer(
 	const handleType1 = (ws: ServerWebSocket<undefined>, raw: string) => {
 		let text = raw;
 		if (text === '\r') text = isWin ? '\r\n' : '\n';
+		input += text;
 		switch (text) {
 			case '\x7f':
+				input = input.slice(0, -1);
 				if (input.length > 0) {
 					input = input.slice(0, -1);
 					ws.send(`1${stringToBase64('\b \b')}`);

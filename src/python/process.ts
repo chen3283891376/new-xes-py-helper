@@ -84,20 +84,21 @@ export class PythonProcessManager {
 			this.sendInput(input);
 		}
 
-		try {
-			const code = await this.pythonProcess.exited;
-			this.processReady = false;
-			this.pythonProcess = null;
-			if (this.exitCallback) {
-				try {
-					this.exitCallback(code);
-				} catch {
-					// ignore
+		this.pythonProcess.exited
+			.then((code) => {
+				this.processReady = false;
+				this.pythonProcess = null;
+				if (this.exitCallback) {
+					try {
+						this.exitCallback(code);
+					} catch {
+						// ignore
+					}
 				}
-			}
-		} catch {
-			// ignore
-		}
+			})
+			.catch(() => {
+				// ignore
+			});
 	}
 
 	sendInput(data: string): void {
@@ -133,13 +134,10 @@ export class PythonProcessManager {
 		const stderrReader = this.pythonProcess.stderr?.getReader();
 		const decoder = new TextDecoder();
 
-		const stdout = '';
-		const stderr = '';
-
 		const readStream = async (
 			reader: ReadableStreamDefaultReader<Uint8Array>,
-			target: string,
 		) => {
+			let target = '';
 			while (true) {
 				const { done, value } = await reader.read();
 				if (done) break;
@@ -149,8 +147,8 @@ export class PythonProcessManager {
 		};
 
 		const [newStdout, newStderr] = await Promise.all([
-			readStream(stdoutReader, stdout),
-			readStream(stderrReader, stderr),
+			readStream(stdoutReader),
+			readStream(stderrReader),
 		]);
 
 		return { stdout: newStdout, stderr: newStderr };
