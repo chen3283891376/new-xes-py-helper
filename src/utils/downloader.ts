@@ -12,7 +12,11 @@ const CDNS = [
 ];
 let cdnIndex = 0;
 
-const downloadOnce = async (data: FileNode, dir: string, logger: nanolog.Logger): Promise<boolean> => {
+const downloadOnce = async (
+	data: FileNode,
+	dir: string,
+	logger: nanolog.Logger,
+): Promise<boolean> => {
 	try {
 		await mkdir(dir, { recursive: true });
 
@@ -62,7 +66,7 @@ const downloadOnce = async (data: FileNode, dir: string, logger: nanolog.Logger)
 
 		return true;
 	} catch (e) {
-		logger.error('下载文件失败', e)
+		logger.error('下载文件失败', e);
 		return false;
 	}
 };
@@ -71,7 +75,7 @@ export const downloadAll = async (
 	data: FileTreeStructure['treeAssets'],
 	outRoot: string = process.cwd(),
 ): Promise<string> => {
-	const logger = nanolog('Download')
+	const logger = nanolog('Download');
 	const dfs = async (
 		nodes: FileTreeStructure['treeAssets'],
 		currentPath: string,

@@ -23,8 +23,8 @@ import nanolog from '@turbowarp/nanolog';
 	if (await checkPorts()) {
 		port = getPort();
 		logger.info('端口检查通过');
-		logger.info('HTTP 端口：', port)
-		logger.info('Websocket 端口：', port+1)
+		logger.info('HTTP 端口：', port);
+		logger.info('Websocket 端口：', port + 1);
 	} else {
 		logger.error('端口检查失败');
 		process.exit(1);

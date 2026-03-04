@@ -14,7 +14,7 @@ export function createWsServer(
 	port: number,
 	pythonProcess: PythonProcessManager,
 ): WsServerHandle {
-	const logger = nanolog('WSS')
+	const logger = nanolog('WSS');
 
 	let input = '';
 	let projectPath = '';
@@ -58,7 +58,7 @@ export function createWsServer(
 				data.xml || '',
 				'utf-8',
 			);
-			logger.info('资源下载成功', projectPath)
+			logger.info('资源下载成功', projectPath);
 			ws.send(
 				`7${stringToBase64(
 					JSON.stringify({
@@ -163,7 +163,7 @@ export function createWsServer(
 		hostname: '127.0.0.1',
 		websocket: {
 			open() {
-				logger.debug('ws连接成功')
+				logger.debug('ws连接成功');
 				input = '';
 			},
 			async message(ws, message) {
@@ -178,7 +178,7 @@ export function createWsServer(
 				}
 			},
 			close() {
-				logger.debug('ws连接关闭')
+				logger.debug('ws连接关闭');
 			},
 		},
 		fetch(req, res) {
