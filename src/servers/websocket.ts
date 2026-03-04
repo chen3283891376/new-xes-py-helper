@@ -4,6 +4,7 @@ import { downloadAll, stringToBase64, CORS_HEADERS } from '../utils';
 import { analyzePythonError, PythonProcessManager } from '../python';
 import type { ServerWebSocket } from 'bun';
 import { platform } from 'os';
+import nanolog from '@turbowarp/nanolog';
 
 interface WsServerHandle {
 	server: ReturnType<typeof Bun.serve>;
@@ -13,6 +14,8 @@ export function createWsServer(
 	port: number,
 	pythonProcess: PythonProcessManager,
 ): WsServerHandle {
+	const logger = nanolog('WSS')
+
 	let input = '';
 	let projectPath = '';
 	let installingMissing = false;
@@ -55,7 +58,7 @@ export function createWsServer(
 				data.xml || '',
 				'utf-8',
 			);
-			console.log('项目资源下载完成', projectPath);
+			logger.info('资源下载成功', projectPath)
 			ws.send(
 				`7${stringToBase64(
 					JSON.stringify({
@@ -158,7 +161,7 @@ export function createWsServer(
 		hostname: '127.0.0.1',
 		websocket: {
 			open() {
-				console.log('ws连接成功');
+				logger.debug('ws连接成功')
 				input = '';
 			},
 			async message(ws, message) {
@@ -173,7 +176,7 @@ export function createWsServer(
 				}
 			},
 			close() {
-				console.warn('ws连接关闭');
+				logger.debug('ws连接关闭')
 			},
 		},
 		fetch(req, res) {

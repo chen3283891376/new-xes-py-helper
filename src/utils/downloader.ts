@@ -1,6 +1,7 @@
 import type { FileNode, FileTreeStructure } from '../interfaces/filetree';
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
+import nanolog from '@turbowarp/nanolog';
 
 const CDNS = [
 	'http://static0.xesimg.com',
@@ -11,7 +12,7 @@ const CDNS = [
 ];
 let cdnIndex = 0;
 
-const downloadOnce = async (data: FileNode, dir: string): Promise<boolean> => {
+const downloadOnce = async (data: FileNode, dir: string, logger: nanolog.Logger): Promise<boolean> => {
 	try {
 		await mkdir(dir, { recursive: true });
 
@@ -61,7 +62,7 @@ const downloadOnce = async (data: FileNode, dir: string): Promise<boolean> => {
 
 		return true;
 	} catch (e) {
-		console.error('downloadOnce error:', e);
+		logger.error('下载文件失败', e)
 		return false;
 	}
 };
@@ -70,6 +71,7 @@ export const downloadAll = async (
 	data: FileTreeStructure['treeAssets'],
 	outRoot: string = process.cwd(),
 ): Promise<string> => {
+	const logger = nanolog('Download')
 	const dfs = async (
 		nodes: FileTreeStructure['treeAssets'],
 		currentPath: string,
@@ -87,7 +89,7 @@ export const downloadAll = async (
 					await dfs(node.children, fullPath);
 				}
 			} else {
-				await downloadOnce(node as FileNode, targetDir);
+				await downloadOnce(node as FileNode, targetDir, logger);
 			}
 		}
 	};

@@ -1,7 +1,9 @@
 import net from 'net';
+import nanolog from '@turbowarp/nanolog'
 
 let port = 55820;
 const port_list = [55820, 55825, 55830, 55835];
+const logger = nanolog('Port')
 
 function checkPortByBind(port: number) {
 	return new Promise((resolve) => {
@@ -76,7 +78,7 @@ export async function checkPorts(): Promise<boolean> {
 			}
 
 			if (allAvailable) {
-				console.log(`使用命令行指定的端口: ${port}-${port + 3}`);
+				logger.info(`使用命令行指定的端口: ${port}-${port + 3}`);
 				return true;
 			}
 		}
@@ -94,12 +96,12 @@ export async function checkPorts(): Promise<boolean> {
 
 		if (portAvailable) {
 			port = p;
-			console.log(`使用预设端口列表中的端口: ${p}-${p + 3}`);
+			logger.info(`使用预设端口列表中的端口: ${p}-${p + 3}`)
 			return true;
 		}
 	}
 
-	console.log('未找到可用的端口组（连续4个端口）');
+	logger.log('未找到可用的端口组(连续4个端口)')
 	return false;
 }
 
