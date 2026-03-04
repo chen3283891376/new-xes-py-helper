@@ -35,8 +35,8 @@ export function createWsServer(
 			ws.send(
 				`7${stringToBase64(
 					JSON.stringify({
-						type: 'compileFail',
-						info: '链接终止',
+						Type: 'compileFail',
+						Info: '运行终止',
 					}),
 				)}`,
 			);
@@ -146,8 +146,11 @@ export function createWsServer(
 			return;
 		}
 		if (text === '\x03') {
-			pythonProcess.killProcess();
-			ws.close();
+			ws.send(`1${stringToBase64('^C')}`);
+			pythonProcess.sendCtrlC();
+			// pythonProcess.killProcess();
+			// ws.close();
+			return;
 		}
 		ws.send(`1${stringToBase64(text as string)}`);
 	};

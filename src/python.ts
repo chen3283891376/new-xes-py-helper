@@ -1,6 +1,7 @@
 import { spawn, type Subprocess } from 'bun';
 import { platform } from 'os';
 import path from 'path';
+import { kill } from 'process';
 import type { Writable } from 'stream';
 
 export function analyzePythonError(errorOutput: string): {
@@ -255,6 +256,11 @@ export class PythonProcessManager {
 			);
 		} else if (!this.processReady) {
 			this.pendingInputs.push(data);
+		}
+	}
+	sendCtrlC(): void {
+		if (this.pythonProcess && this.pythonProcess.stdin) {
+			kill(this.pythonProcess.pid, 'SIGINT')
 		}
 	}
 
