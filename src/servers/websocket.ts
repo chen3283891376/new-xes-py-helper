@@ -99,19 +99,19 @@ export function createWsServer(
 					installProcess.onStdout((chunk) => {
 						safeSend(
 							ws,
-							`1${stringToBase64(chunk.replace(/\n/g, '\r\n').trim())}`,
+							`1${stringToBase64(chunk.replace(/\n/g, '\r\n'))}`,
 						);
 					});
 					installProcess.onStderr((chunk) => {
 						safeSend(
 							ws,
-							`1${stringToBase64(chunk.replace(/\n/g, '\r\n').trim())}`,
+							`1${stringToBase64(chunk.replace(/\n/g, '\r\n'))}`,
 						);
 					});
 					await installProcess.installPackage(missingModule);
 					safeSend(
 						ws,
-						`\r\n1${stringToBase64('[stderr] 自动安装完成，请重新运行程序...\r\n')}`,
+						`1${stringToBase64('\r\n[stderr] 自动安装完成，请重新运行程序...\r\n')}`,
 					);
 					installProcess.killProcess();
 					installingMissing = false;

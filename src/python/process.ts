@@ -272,6 +272,8 @@ export class PythonProcessManager {
 				'--no-warn-script-location',
 				'--only-binary',
 				':all:',
+				'-i',
+				'https://pypi.tuna.tsinghua.edu.cn/simple',
 			];
 
 			if (upgrade) {
