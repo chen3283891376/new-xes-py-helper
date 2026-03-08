@@ -22,6 +22,18 @@ export class PythonProcessManager {
 		}
 	}
 
+	async getPyVersion() {
+		const cmd = [this.pythonPath, '--version'];
+		const proc = spawn({
+			cmd,
+		});
+		await proc.exited;
+		const out = await new Response(proc.stdout).text();
+		const err = await new Response(proc.stderr).text();
+		const version = (out + err).trim().replace('Python ', '');
+		return version;
+	}
+
 	// 设置/更新 venv 路径
 	setVenvPath(venvPath: string): void {
 		this.venvPath = venvPath;
@@ -250,7 +262,7 @@ export class PythonProcessManager {
 		}
 	}
 
-	// 安装包到 venv
+	// 安装包
 	async installPackage(packageName: string, upgrade: boolean = false) {
 		let fullOutput = '';
 

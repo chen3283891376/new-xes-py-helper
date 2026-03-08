@@ -147,4 +147,7 @@ export const moduleMap: Record<string, string> = {
 
 	skimage: 'scikit-image',
 	enum: 'enum34',
+
+	// 游戏
+	pygame: 'pygame-ce',
 };
